@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Touchline Manager</title>
+<meta name="theme-color" content="#1d5a37">
+<meta name="description" content="A text-based football manager. Play in your browser; your progress is saved.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8eee6;--panel:#f7faf5;--ink:#13271b;--mute:#5d7064;--line:#cbd6c9;--acc:#c98a00;--accink:#fff;--good:#1e7a46;--bad:#b3392b;--pitch:#1d5a37;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1a12;--panel:#15271c;--ink:#e6efe6;--mute:#8fa597;--line:#27402f;--acc:#f0b429;--accink:#1a1300;--good:#4cc27f;--bad:#ef7a6a;--pitch:#18452b}}
+:root[data-theme="dark"]{--bg:#0d1a12;--panel:#15271c;--ink:#e6efe6;--mute:#8fa597;--line:#27402f;--acc:#f0b429;--accink:#1a1300;--good:#4cc27f;--bad:#ef7a6a;--pitch:#18452b}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:500 15px/1.45 Barlow,system-ui,sans-serif}
+h1,h2,h3,.big{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:700;margin:0;letter-spacing:.01em}
+h2{font-size:24px;margin-bottom:10px}h3{font-size:18px;margin:14px 0 6px}
+#wrap{max-width:640px;margin:0 auto;padding:14px 14px 90px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.top h1{font-size:22px}.money{font-weight:600;color:var(--acc)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.pitchcard{background:var(--pitch);color:#f2f7f2;border:0;background-image:linear-gradient(90deg,transparent 49.7%,rgba(255,255,255,.14) 49.7% 50.3%,transparent 50.3%)}
+.vs{display:flex;align-items:center;justify-content:space-around;text-align:center;gap:6px}
+.vs svg{width:56px;height:64px}.vs .nm{font-weight:600;font-size:14px}
+.score{font-size:46px;line-height:1}.min{font-size:15px;opacity:.85}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:9px 14px;cursor:pointer}
+button.pri{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+button.on{outline:2px solid var(--acc)}button:disabled{opacity:.5}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}.row svg.av{width:38px;height:38px;flex:none}
+.row .g{flex:1;min-width:0}.row .s{font-size:12.5px;color:var(--mute)}
+.pos{display:inline-block;min-width:34px;text-align:center;font-size:12px;font-weight:700;border-radius:5px;padding:1px 5px;color:#fff}
+.GK{background:#b9770e}.DF{background:#2874a6}.MF{background:#1e8449}.FW{background:#b03a2e}
+.ovr{font-family:"Barlow Condensed",sans-serif;font-size:22px;font-weight:700;width:34px;text-align:right}
+.bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:3px;width:60px}.bar i{display:block;height:100%;background:var(--good)}
+.feed{max-height:300px;overflow:auto;margin-top:12px;font-size:14.5px}
+.feed div{padding:5px 0;border-top:1px solid rgba(255,255,255,.15)}.feed b{display:inline-block;width:34px}
+.feed .g{color:#ffd35c;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--mute)}td:nth-child(2),th:nth-child(2){text-align:left}tr.me td{background:rgba(201,138,0,.16);font-weight:700}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));gap:4px}
+.tabs button{flex:1;max-width:110px;border:0;background:none;color:var(--mute);padding:8px 4px}.tabs button.on{color:var(--ink);outline:0;box-shadow:inset 0 -3px var(--acc)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pick button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px}
+.pick svg{width:52px;height:60px}.seg{display:flex;gap:8px;flex-wrap:wrap}
+.res{font-size:14px;color:var(--mute)}.win{color:var(--good)}.lose{color:var(--bad)}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="app"></div></div>
+<div class="tabs" id="tabs"></div>
+<script>
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[Math.floor(Math.random()*a.length)],cl=(x,a,b)=>Math.max(a,Math.min(b,x));
+const FN=["Luca","Marco","Tomas","Jonas","Ravi","Diego","Kofi","Mateo","Ivan","Sami","Leo","Niko","Omar","Felix","Hugo","Yusuf","Andre","Pablo","Erik","Tariq"];
+const LN=["Silva","Okoye","Brandt","Moreau","Petrov","Costa","Lindqvist","Haddad","Novak","Ruiz","Adeyemi","Fischer","Rossi","Tanaka","Varga","Mensah","Duarte","Kovac","Santos","Berg"];
+const CLUBS=[["Harbor Rovers","#1f6fb2","HR"],["Red Mill United","#c0392b","RM"],["Northgate City","#7d3c98","NC"],["Ironbridge Town","#556270","IT"],["Sunvale Athletic","#d49a00","SA"],["Greenfield FC","#1e8449","GF"],["Stoneport Wanderers","#d35400","SW"],["Kingsway Albion","#139a9a","KA"]];
+const FORMS={"442":{DF:4,MF:4,FW:2},"433":{DF:4,MF:3,FW:3},"352":{DF:3,MF:5,FW:2}};
+const MENT={atk:"Attack",bal:"Balanced",def:"Defend"};
+let S=null,tab="home",live=null,timer=null,nid=1;
+const SK=["#f1c9a5","#d9a273","#a96d45","#7a4a2c","#4e2e1b"],HR=["#1c1410","#4a3020","#8a5a2b","#c9a050","#2b2b2b"];
+
+function ovr(p){const{pac,pas,sho,def}=p;return Math.round(p.pos==="GK"?def:p.pos==="DF"?def*.6+pac*.2+pas*.2:p.pos==="MF"?pas*.5+def*.2+sho*.15+pac*.15:sho*.55+pac*.3+pas*.15)}
+const eff=p=>ovr(p)*(.85+.15*p.fit/100);
+function mk(pos,b){const hi=()=>cl(b+R(-3,6),30,92),lo=()=>cl(b-R(8,20),20,80);
+ const st={GK:{def:hi(),pac:lo(),pas:lo(),sho:20},DF:{def:hi(),pac:lo()+8,pas:lo()+6,sho:lo()},MF:{pas:hi(),def:lo()+6,pac:lo()+8,sho:lo()+6},FW:{sho:hi(),pac:hi()-4,pas:lo()+8,def:25}}[pos];
+ return{id:nid++,name:pick(FN)+" "+pick(LN),age:R(18,34),pos,fit:100,goals:0,...st}}
+function mkTeam(i){const b=R(55,67),sq=[];[["GK",2],["DF",5],["MF",5],["FW",4]].forEach(([p,n])=>{for(let k=0;k<n;k++)sq.push(mk(p,b))});
+ return{id:i,name:CLUBS[i][0],col:CLUBS[i][1],ini:CLUBS[i][2],players:sq,budget:15000,tac:{form:"442",ment:"bal"}}}
+const value=p=>Math.max(300,Math.round((ovr(p)-45)**2*20*(p.age>30?.6:1)/50)*50);
+function sched(){const ids=[0,1,2,3,4,5,6,7],rs=[];for(let r=0;r<7;r++){const m=[];for(let i=0;i<4;i++){const a=ids[i],b=ids[7-i];m.push(r%2?[b,a]:[a,b])}rs.push(m);ids.splice(1,0,ids.pop())}
+ return rs.concat(rs.map(r=>r.map(([h,a])=>[a,h])))}
+const freshTable=()=>Object.fromEntries([...Array(8).keys()].map(i=>[i,{p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}]));
+function market(){const m=[];["GK","DF","DF","MF","MF","FW","FW","FW"].forEach(p=>{const x=mk(p,R(58,76));x.age=R(19,32);m.push(x)});return m}
+function newGame(u){const teams=CLUBS.map((_,i)=>mkTeam(i));S={teams,user:u,fx:sched(),round:0,table:freshTable(),mk:market(),last:null,season:1,msg:""};save()}
+let saveOk=true;
+function save(){try{S.v=1;S.saved=Date.now();localStorage.setItem("tm1",JSON.stringify(S));saveOk=true}catch(e){saveOk=false}}
+function fixNid(){nid=Math.max(...S.teams.flatMap(t=>t.players.map(p=>p.id)),...S.mk.map(p=>p.id))+1}
+function load(){try{const s=localStorage.getItem("tm1");if(s){S=JSON.parse(s);fixNid()}}catch(e){}}
+
+function lineup(t){const f=FORMS[t.tac.form],o=[];for(const pos of["GK","DF","MF","FW"]){const n=pos==="GK"?1:f[pos];o.push(...t.players.filter(p=>p.pos===pos).sort((a,b)=>eff(b)-eff(a)).slice(0,n))}return o}
+const avg=a=>a.reduce((s,p)=>s+eff(p),0)/(a.length||1);
+function strength(t,home){const L=lineup(t),g=L.filter(p=>p.pos==="GK"),d=L.filter(p=>p.pos==="DF"),m=L.filter(p=>p.pos==="MF"),f=L.filter(p=>p.pos==="FW");
+ const k=t.tac.ment==="atk"?4:t.tac.ment==="def"?-4:0,h=home?2:0;
+ return{A:(avg(f)*2+avg(m))/3+k+h,D:(avg(d)*2+avg(g))/3-k+h,M:avg(m)+h,gk:g[0]?eff(g[0]):40,L}}
+function sim(h,a){const H=strength(h,1),A=strength(a,0),ev=[];let gh=0,ga=0;
+ const E=(m,t,k)=>ev.push({m,t,k,sh:gh,sa:ga});
+ E(0,`Kick-off! ${h.name} host ${a.name}.`,"i");
+ for(let m=1;m<=90;m++){
+  if(m===46)E(45,`Half-time: ${h.name} ${gh}–${ga} ${a.name}.`,"i");
+  if(Math.random()>.17)continue;
+  const ph=Math.pow(H.M,3)/(Math.pow(H.M,3)+Math.pow(A.M,3)),hs=Math.random()<ph,at=hs?H:A,df=hs?A:H,tm=hs?h:a,op=hs?a:h;
+  const fw=at.L.filter(p=>p.pos==="FW"),mf=at.L.filter(p=>p.pos==="MF");
+  const wp=at.L.filter(p=>p.pos!=="GK").map(p=>({p,w:Math.pow(p.sho,2)*(p.pos==="FW"?3:p.pos==="MF"?1:.25)}));
+  let r=Math.random()*wp.reduce((s,x)=>s+x.w,0),sc=wp[0].p;for(const x of wp){r-=x.w;if(r<=0){sc=x.p;break}}
+  const as=pick(mf.length?mf:fw),sn=sc.name.split(" ")[1],an=as.name.split(" ")[1];
+  if(Math.random()>cl(.4+(at.A-df.D)/120,.15,.8)){if(Math.random()<.35)E(m,pick([`${tm.name} build up well but ${op.name} close the door.`,`${an} loses the ball in a dangerous area.`,`A promising move from ${tm.name} ends with an offside flag.`]),"n");continue}
+  if(Math.random()<cl(.3+(at.A-df.gk)/150,.1,.6)){hs?gh++:ga++;sc.goals++;
+   E(m,`GOAL! ${sn} ${pick(["slots it home","fires into the corner","heads in from close range","finishes coolly"])} after a pass from ${an}. ${tm.name} score!`,"g")}
+  else{const gk=df.L.find(p=>p.pos==="GK").name.split(" ")[1];E(m,pick([`${sn} shoots… great save by ${gk}!`,`${sn} blasts it over the bar.`,`${sn} hits the post! So close for ${tm.name}.`,`${gk} tips ${sn}’s effort round the post.`]),"n")}}
+ E(90,`Full-time: ${h.name} ${gh}–${ga} ${a.name}.`,"i");return{ev,gh,ga}}
+
+function apply(h,a,gh,ga){const T=S.table,H=T[h],A=T[a];H.p++;A.p++;H.gf+=gh;H.ga+=ga;A.gf+=ga;A.ga+=gh;
+ if(gh>ga){H.w++;A.l++;H.pts+=3}else if(gh<ga){A.w++;H.l++;A.pts+=3}else{H.d++;A.d++;H.pts++;A.pts++}
+ const L=new Set([...lineup(S.teams[h]),...lineup(S.teams[a])].map(p=>p.id));
+ S.teams.filter(t=>t.id===h||t.id===a).forEach(t=>t.players.forEach(p=>p.fit=L.has(p.id)?Math.max(55,p.fit-9):Math.min(100,p.fit+12)))}
+function playRound(){if(live||S.round>=14)return;const fx=S.fx[S.round];let mine=null;
+ fx.forEach(([h,a])=>{const r=sim(S.teams[h],S.teams[a]);apply(h,a,r.gh,r.ga);if(h===S.user||a===S.user)mine={h,a,...r}});
+ const t=S.teams[S.user];S.round++;const [h,a]=[mine.h,mine.a];
+ const won=(h===S.user?mine.gh>mine.ga:mine.ga>mine.gh),dr=mine.gh===mine.ga;
+ t.budget+=(h===S.user?600:150)+(won?500:dr?150:0);
+ S.last={h,a,gh:mine.gh,ga:mine.ga};S.mk=market();save();
+ live={...mine,i:0};tick();timer=setInterval(tick,420)}
+function tick(){if(!live)return;live.i++;if(live.i>=live.ev.length){clearInterval(timer)}render()}
+function skip(){clearInterval(timer);live.i=live.ev.length;render()}
+function closeLive(){live=null;render()}
+
+function badge(t,s){return`<svg viewBox="0 0 40 46" ${s?`style="width:${s}px;height:${s*1.15}px"`:""}><path d="M3 3h34v22c0 10-9 16-17 19C12 41 3 35 3 25z" fill="${t.col}"/><path d="M3 3h34v8H3z" fill="rgba(255,255,255,.28)"/><text x="20" y="29" text-anchor="middle" font-size="14" font-weight="700" font-family="Barlow Condensed,Arial" fill="#fff">${t.ini}</text></svg>`}
+function av(p,col){const k=SK[p.id%5],h=HR[(p.id*3)%5];return`<svg class="av" viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="${col}" opacity=".22"/><path d="M5 40c0-9 7-12 15-12s15 3 15 12z" fill="${col}"/><circle cx="20" cy="17" r="8" fill="${k}"/><path d="M11.5 16a8.5 8.5 0 0117 0c-3-4.5-14-4.5-17 0z" fill="${h}"/></svg>`}
+const money=k=>"£"+(k/1000).toFixed(1)+"m";
+function prow(p,t,extra,mark){return`<div class="row">${av(p,t.col)}<div class="g"><div><span class="pos ${p.pos}">${p.pos}</span> <b>${p.name}</b>${mark?" ●":""}</div><div class="s">Age ${p.age} · PAC ${p.pac} PAS ${p.pas} SHO ${p.sho} DEF ${p.def}${p.goals?` · ${p.goals} goals`:""}</div></div><div><div class="ovr">${ovr(p)}</div><div class="bar"><i style="width:${p.fit}%"></i></div></div>${extra||""}</div>`}
+
+function vHome(){const t=S.teams[S.user],pos=pos_();
+ if(S.round>=14){const w=Object.entries(S.table).sort((a,b)=>b[1].pts-a[1].pts||(b[1].gf-b[1].ga)-(a[1].gf-a[1].ga))[0][0];
+  return`<div class="card pitchcard"><h2>Season ${S.season} complete</h2><div class="vs">${badge(S.teams[w],72)}</div><p style="text-align:center">${S.teams[w].name} are champions. You finished ${pos}${ord(pos)}.</p></div><button class="pri" onclick="nextSeason()">Start season ${S.season+1}</button>`}
+ const [h,a]=S.fx[S.round].find(m=>m.includes(S.user)),H=S.teams[h],A=S.teams[a],l=S.last;
+ return`<div class="card pitchcard"><div style="text-align:center;opacity:.85">Matchday ${S.round+1} of 14 · Season ${S.season}</div><div class="vs" style="margin:10px 0">${badge(H,0)}<div class="big score">vs</div>${badge(A,0)}</div><div class="vs"><div class="nm">${H.name}</div><div class="nm">${A.name}</div></div><div style="text-align:center;margin-top:12px"><button class="pri" onclick="playRound()">Play match</button></div></div>
+ <div class="card"><div class="res">League position</div><div class="big" style="font-size:30px">${pos}${ord(pos)} <span class="res">of 8 · ${S.table[S.user].pts} pts</span></div>
+ ${l?`<div class="res" style="margin-top:6px">Last: ${S.teams[l.h].name} ${l.gh}–${l.ga} ${S.teams[l.a].name}</div>`:""}
+ ${S.msg?`<div class="res" style="margin-top:6px">${S.msg}</div>`:""}</div>
+ ${saveBox()}<button onclick="if(this.dataset.s){S=null;localStorage.removeItem('tm1');render()}else{this.dataset.s=1;this.textContent='Tap again to erase save and restart'}">New game</button>`}
+const ord=n=>["th","st","nd","rd"][(n%100>10&&n%100<14)||n%10>3?0:n%10];
+const sorted=()=>Object.entries(S.table).sort((a,b)=>b[1].pts-a[1].pts||(b[1].gf-b[1].ga)-(a[1].gf-a[1].ga)||b[1].gf-a[1].gf);
+const pos_=()=>sorted().findIndex(e=>+e[0]===S.user)+1;
+function vLive(){const e=live.ev.slice(0,live.i),c=e[e.length-1]||{m:0,sh:0,sa:0},H=S.teams[live.h],A=S.teams[live.a],end=live.i>=live.ev.length;
+ return`<div class="card pitchcard"><div class="vs">${badge(H,0)}<div><div class="big score">${c.sh} – ${c.sa}</div><div class="min">${end?"Full-time":c.m+"’"}</div></div>${badge(A,0)}</div><div class="vs"><div class="nm">${H.name}</div><div class="nm">${A.name}</div></div>
+ <div class="feed">${e.slice().reverse().map(x=>`<div class="${x.k==="g"?"g":""}"><b>${x.m}’</b>${x.t}</div>`).join("")}</div>
+ <div style="text-align:center;margin-top:12px">${end?`<button class="pri" onclick="closeLive()">Continue</button>`:`<button onclick="skip()">Skip to full-time</button>`}</div></div>`}
+function vSquad(){const t=S.teams[S.user],ids=new Set(lineup(t).map(p=>p.id));
+ return`<h2>Squad <span class="res">● = starting XI</span></h2><div class="card">${["GK","DF","MF","FW"].map(P=>t.players.filter(p=>p.pos===P).sort((a,b)=>ovr(b)-ovr(a)).map(p=>prow(p,t,"",ids.has(p.id))).join("")).join("")}</div>`}
+function vTac(){const t=S.teams[S.user];
+ return`<h2>Tactics</h2><div class="card"><h3 style="margin-top:0">Formation</h3><div class="seg">${Object.keys(FORMS).map(f=>`<button class="${t.tac.form===f?"on":""}" onclick="setT('form','${f}')">${f.split("").join("-")}</button>`).join("")}</div>
+ <h3>Mentality</h3><div class="seg">${Object.entries(MENT).map(([k,v])=>`<button class="${t.tac.ment===k?"on":""}" onclick="setT('ment','${k}')">${v}</button>`).join("")}</div>
+ <p class="res">Attack scores more but concedes more. Tired players (low bar) play worse, so a deep squad matters.</p></div><h3>Starting XI</h3><div class="card">${lineup(t).map(p=>prow(p,t)).join("")}</div>`}
+function vTable(){return`<h2>League table</h2><div class="card"><table><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr>${sorted().map(([id,r],i)=>`<tr class="${+id===S.user?"me":""}"><td>${i+1}</td><td>${S.teams[id].name}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf-r.ga}</td><td>${r.pts}</td></tr>`).join("")}</table></div>`}
+function vMarket(){const t=S.teams[S.user];
+ return`<h2>Transfers <span class="money">${money(t.budget)}</span></h2><h3>Players for sale</h3><div class="card">${S.mk.map(p=>prow(p,t,`<button ${t.budget<value(p)||t.players.length>=20?"disabled":""} onclick="buy(${p.id})">${money(value(p))}</button>`)).join("")}</div>
+ <h3>Your squad (${t.players.length}/20)</h3><div class="card">${t.players.slice().sort((a,b)=>ovr(b)-ovr(a)).map(p=>prow(p,t,`<button ${t.players.length<=14||t.players.filter(x=>x.pos===p.pos).length<=(p.pos==="GK"?2:3)?"disabled":""} onclick="sell(${p.id})">Sell ${money(Math.round(value(p)*.9))}</button>`)).join("")}</div><p class="res">Keep at least 14 players, 2 keepers and 3 in each other position.</p>`}
+function setT(k,v){S.teams[S.user].tac[k]=v;save();render()}
+function buy(id){const t=S.teams[S.user],p=S.mk.find(x=>x.id===id);if(!p||t.budget<value(p))return;t.budget-=value(p);t.players.push(p);S.mk=S.mk.filter(x=>x.id!==id);S.msg=`Signed ${p.name}.`;save();render()}
+function sell(id){const t=S.teams[S.user],p=t.players.find(x=>x.id===id);t.budget+=Math.round(value(p)*.9);t.players=t.players.filter(x=>x.id!==id);S.msg=`Sold ${p.name}.`;save();render()}
+function nextSeason(){const prize=[3000,2000,1500,1000,800,600,400,300][pos_()-1];S.teams.forEach(t=>{t.players.forEach(p=>{p.age++;p.goals=0;p.fit=100;const d=p.age<28?R(-1,3):-R(0,3);["pac","pas","sho","def"].forEach(k=>p[k]=cl(p[k]+d+R(-1,1),20,92))});t.players=t.players.filter(p=>p.age<37||t.players.length<15)});
+ S.teams[S.user].budget+=prize;S.fx=sched();S.round=0;S.table=freshTable();S.season++;S.mk=market();S.last=null;S.msg=`Prize money: ${money(prize)}.`;save();render()}
+
+function render(){const app=document.getElementById("app"),tb=document.getElementById("tabs");
+ if(!S){tb.style.display="none";app.innerHTML=`<div class="top"><h1>Touchline Manager</h1></div><p>Pick a club and lead it through a 14-match season. Clubs and players are fictional.</p><div class="pick">${CLUBS.map((c,i)=>`<button onclick="newGame(${i});render()">${badge({col:c[1],ini:c[2]},0)}${c[0]}</button>`).join("")}</div>${importBox()}`;return}
+ tb.style.display="flex";const t=S.teams[S.user];
+ tb.innerHTML=[["home","Home"],["squad","Squad"],["tac","Tactics"],["table","Table"],["mkt","Transfers"]].map(([k,v])=>`<button class="${tab===k?"on":""}" onclick="tab='${k}';S.msg='';render()">${v}</button>`).join("");
+ const body=live?vLive():{home:vHome,squad:vSquad,tac:vTac,table:vTable,mkt:vMarket}[tab]();
+ app.innerHTML=`<div class="top"><div style="display:flex;gap:10px;align-items:center">${badge(t,0).replace("<svg",'<svg style="width:30px;height:35px"')}<h1>${t.name}</h1></div><div class="money">${money(t.budget)}</div></div>${body}`}
+function saveBox(){const d=S.saved?new Date(S.saved).toLocaleString():"not yet";
+ return`<div class="card"><h3 style="margin-top:0">Save</h3><div class="res">${saveOk?`Auto-saved after every action in this browser. Last saved: ${d}`:`<span class="lose">Saving is blocked in this browser. Export your game to keep it.</span>`}</div>
+ <div class="seg" style="margin-top:10px"><button onclick="exportSave()">Export save file</button><button onclick="document.getElementById('imp').click()">Import save file</button></div>
+ <input id="imp" type="file" accept=".json,application/json" hidden onchange="importSave(this)"></div>`}
+function importBox(){return`<div class="card" style="margin-top:14px"><div class="res">Have a save file from another device?</div><div class="seg" style="margin-top:8px"><button onclick="document.getElementById('imp').click()">Import save file</button></div><input id="imp" type="file" accept=".json,application/json" hidden onchange="importSave(this)"></div>`}
+function exportSave(){save();const b=new Blob([JSON.stringify(S)],{type:"application/json"}),a=document.createElement("a");
+ a.href=URL.createObjectURL(b);a.download=`touchline-${S.teams[S.user].ini}-season${S.season}-md${S.round}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function importSave(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const x=JSON.parse(r.result);if(!Array.isArray(x.teams)||x.teams.length!==8||!x.fx||!x.table)throw 0;S=x;fixNid();tab="home";live=null;save();render()}
+  catch(e){alert("That file is not a valid Touchline Manager save.")}};r.readAsText(f);inp.value=""}
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+load();render();
+</script>
+</body>
+</html>
